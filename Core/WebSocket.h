@@ -6,21 +6,63 @@
 
 #define WebSocketDidDieNotification  @"WebSocketDidDie"
 
+// WebSocket message frame opcodes
+#define WS_OPCODE_CONTINUATION		0
+#define WS_OPCODE_TEXT				1
+#define WS_OPCODE_BINARY			2
+
+// WebSocket control frame opcodes
+#define WS_OPCODE_CLOSE				8
+#define WS_OPCODE_PING				9
+#define WS_OPCODE_PONG				10
+
+// Known WebSocket protocol versions
+enum {
+	WEBSOCKET_OLD_75,			// Old Hyxie versions
+	WEBSOCKET_OLD_76,
+	WEBSOCKET_VERSION_1,		// New Hybi versions
+	WEBSOCKET_VERSION_2,
+	WEBSOCKET_VERSION_3,
+	WEBSOCKET_VERSION_4,
+	WEBSOCKET_VERSION_5,
+	WEBSOCKET_VERSION_6,
+	WEBSOCKET_VERSION_7,
+	WEBSOCKET_VERSION_8,		// implemented here
+	WEBSOCKET_VERSION_9,
+	WEBSOCKET_VERSION_10,
+	WEBSOCKET_VERSION_11,
+	WEBSOCKET_VERSION_12,
+	WEBSOCKET_VERSION_13,
+	WEBSOCKET_VERSION_14,
+	WEBSOCKET_VERSION_15
+};
+
+// Main WebSocket class
 @interface WebSocket : NSObject
 {
 	dispatch_queue_t websocketQueue;
 	
 	HTTPMessage *request;
 	GCDAsyncSocket *asyncSocket;
-	
+
+	// message data when reading frames for protocolVersion >= WEBSOCKET_VERSION_1
+	NSMutableData *message;
+	UInt32 messageLength;		// this is the payloadLength value
+	int messageOpcode;
+	BOOL messageMasked;
+	BOOL messageComplete;
+
+	// data used when supporting old Hyxie versions 75 and 76
 	NSData *term;
 	
 	BOOL isStarted;
 	BOOL isOpen;
-	BOOL isVersion76;
+	int protocolVersion;
 	
 	id delegate;
 }
+
+@property (nonatomic, readonly) int protocolVersion;
 
 + (BOOL)isWebSocketRequest:(HTTPMessage *)request;
 
@@ -54,9 +96,13 @@
  * Public API
  * 
  * Sends a message over the WebSocket.
- * This method is thread-safe.
+ * These methods are thread-safe.
 **/
 - (void)sendMessage:(NSString *)msg;
+- (void)sendBinaryMessage:(NSData *)msg;
+
+// Low level frame sending. Can send a control frame using this method.
+- (void)sendFrame:(int)opcode data:(NSData *)data;
 
 /**
  * Subclass API
@@ -65,6 +111,7 @@
 **/
 - (void)didOpen;
 - (void)didReceiveMessage:(NSString *)msg;
+- (void)didReceiveBinaryMessage:(NSData *)msg;
 - (void)didClose;
 
 @end
@@ -91,6 +138,7 @@
 - (void)webSocketDidOpen:(WebSocket *)ws;
 
 - (void)webSocket:(WebSocket *)ws didReceiveMessage:(NSString *)msg;
+- (void)webSocket:(WebSocket *)ws didReceiveBinaryMessage:(NSData *)msg;
 
 - (void)webSocketDidClose:(WebSocket *)ws;
 
