@@ -745,6 +745,7 @@ static NSThread *bonjourThread;
 		bonjourThread = [[NSThread alloc] initWithTarget:self
 		                                        selector:@selector(bonjourThread)
 		                                          object:nil];
+		[bonjourThread setQualityOfService:NSQualityOfServiceUserInitiated];
 		[bonjourThread start];
 	});
 }
